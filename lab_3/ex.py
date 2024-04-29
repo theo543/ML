@@ -1,5 +1,21 @@
 import numpy as np
 from pathlib import Path
+from einops import rearrange
+
+def cos_sim(a, b):
+    div = np.linalg.norm(a) * np.linalg.norm(b)
+    if div == 0:
+        return 0
+    return np.dot(a, b) / div
+
+def preprocess_image(image):
+    image = image.reshape((28, 28))
+    image = rearrange(image, "(p1 h) (p2 w) -> p1 p2 h w", p1 = 7, p2 = 7)
+    similarity = []
+    for j in range(7):
+        for i in range(j + 1, 7):
+            similarity.append(cos_sim(image[i][j].flatten(), image[7 - i - 1][7 - j - 1].flatten()))
+    return np.array(similarity)
 
 class KnnClassifier:
     def __init__(self, train_images, train_labels):
@@ -17,9 +33,9 @@ class KnnClassifier:
         return label[ind]
 
 def main():
-    train_images = np.loadtxt('train_images.txt')
+    train_images = [preprocess_image(i) for i in np.loadtxt('train_images.txt')]
     train_labels = np.loadtxt('train_labels.txt').astype(np.int64)
-    test_images = np.loadtxt('test_images.txt')
+    test_images = [preprocess_image(i) for i in np.loadtxt('test_images.txt')]
     test_labels = np.loadtxt('test_labels.txt').astype(np.int64)
 
     knn = KnnClassifier(train_images, train_labels)
